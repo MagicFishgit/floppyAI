@@ -116,6 +116,8 @@ class Obstacle:
 
         self.passed = False
 
+        self.set_height()
+
     #Define obstacle height randomly for variation.
     def set_height(self):
         self.height = random.randrange(50, 450)
@@ -152,6 +154,7 @@ class Obstacle:
 class Floor:
     VEL = 5
     WIDTH = FLOOR_IMG.get_width()
+    img = FLOOR_IMG
     
     def __init__(self, y):
         self.y = y
@@ -170,19 +173,30 @@ class Floor:
 
         if self.floor2x + self.WIDTH < 0:
             self.floor2x = self.floor1x + self.WIDTH
+
+    def draw(self, win):
+        win.blit(self.img, (self.floor1x, self.y))
+        win.blit(self.img, (self.floor2x, self.y))
     
 
 
 #Function to draw to window.
-def draw_window(win, sprite):
+def draw_window(win, sprite, obstacles, floor):
     win.blit(BACKGROUND_IMG, (0,0))
+
+    for obstacle in obstacles:
+        obstacle.draw(win)
+
+    floor.draw(win)
     sprite.draw(win)
 
     pygame.display.update()
 
 #Main game loop.
 def main():
-    sprite = Floppy_Bird(200,200)
+    sprite = Floppy_Bird(230,350)
+    floor = Floor(730)
+    obstacles = [Obstacle(700)]
     win = pygame.display.set_mode((WIN_WIDTH, WIN_HEIGHT))
     clock_rate = pygame.time.Clock()
 
@@ -195,7 +209,11 @@ def main():
                 run_game = False
 
         #sprite.move()
-        draw_window(win, sprite) 
+        for obstacle in obstacles:
+            obstacle.move()
+            
+        floor.move()
+        draw_window(win, sprite, obstacles, floor) 
 
     pygame.quit()
     quit()
