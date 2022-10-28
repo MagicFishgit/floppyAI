@@ -1,7 +1,4 @@
-from curses import window
-from tkinter import CENTER
-from turtle import window_height
-import pygame
+from turtle import width
 import pygame
 import neat
 import time
@@ -10,12 +7,12 @@ import random
 import tkinter
 
 #Set the dimensions of the game screen
-WIN_WIDTH = 600
+WIN_WIDTH = 500
 WIN_HEIGHT = 800
 
 #Load in image assets to pygame.
 FLOPPY_BIRDS_IMGS = [pygame.transform.scale2x(pygame.image.load(os.path.join("imgs", "bird1.png"))), pygame.transform.scale2x(pygame.image.load(os.path.join("imgs", "bird2.png"))), pygame.transform.scale2x(pygame.image.load(os.path.join("imgs", "bird3.png")))]
-PIPE_IMG = pygame.transform.scale2x(pygame.image.load(os.path.join("imgs", "pipe.png")))
+OBSTACLE_IMG = pygame.transform.scale2x(pygame.image.load(os.path.join("imgs", "pipe.png")))
 FLOOR_IMG = pygame.transform.scale2x(pygame.image.load(os.path.join("imgs", "floor.png")))
 BACKGROUND_IMG = pygame.transform.scale2x(pygame.image.load(os.path.join("imgs", "background.png")))
 
@@ -100,9 +97,80 @@ class Floppy_Bird:
         new_rectangle = rotated_sprite.get_rect(center=self.sprite.get_rect(topleft = (self.x, self.y)).center)
         win.blit(rotated_sprite, new_rectangle.topleft)
     
-    #Colision detection.
+    #Collision detection.
     def get_mask(self):
         return pygame.mask.from_surface(self.sprite)
+
+class Obstacle:
+    GAP = 200
+    VEL = 5
+
+    def __init__(self, x):
+        self.x = x
+        self.height = 0
+        
+        self.top = 0
+        self.bottom = 0
+        self.OBSTACLE_TOP = pygame.transform.flip(OBSTACLE_IMG, False, True)
+        self.OBSTACLE_BOTTOM = OBSTACLE_IMG
+
+        self.passed = False
+
+    #Define obstacle height randomly for variation.
+    def set_height(self):
+        self.height = random.randrange(50, 450)
+        self.top = self.height - self.OBSTACLE_TOP.get_height()
+        self.bottom = self.height + self.GAP
+
+    #Move obstacle to the left.
+    def move(self):
+        self.x -= self.VEL
+
+    #Draw Obstacle.
+    def draw(self, win):
+        win.blit(self.OBSTACLE_TOP, (self.x, self.top))
+        win.blit(self.OBSTACLE_BOTTOM, (self.x, self.bottom))
+
+    #Collision detections using python masks for pixel perfect detection. https://www.pygame.org/docs/ref/mask.html
+    def collide (self, sprite):
+        sprite_mask = sprite.get_mask()
+        obs_top_mask = pygame.mask.from_surface(self.OBSTACLE_TOP)
+        obs_bottom_mask = pygame.mask.from_surface(self.OBSTACLE_BOTTOM)
+
+        #Calculate offset = Checking if pixels in mask arrays collide. 
+        obs_top_offset = (self.x - sprite.x, self.top - round(sprite.y))
+        obs_bottom_offset = (self.x - sprite.x, self.bottom - round(sprite.y))
+
+        obs_top_collision_check = sprite_mask.overlap(obs_bottom_mask, obs_bottom_offset)
+        obs_bottom_collision_check = sprite_mask.overlap(obs_top_mask, obs_top_offset)
+
+        if obs_top_collision_check or obs_bottom_collision_check:
+            return True
+        return False
+
+#Move floor sprite and redraw to simulate moving background.
+class Floor:
+    VEL = 5
+    WIDTH = FLOOR_IMG.get_width()
+    
+    def __init__(self, y):
+        self.y = y
+        self.floor1x = 0
+        self.floor2x = self.WIDTH
+
+    def move(self):
+        self.floor1x -= self.VEL
+        self.floor2x -= self.VEL
+
+        #If the x pos of the first floor sprite reaches the end of the left window ie. x <= 0
+        #then redraw on top of the current position of the second floor sprite plus move
+        #it's x position positively to place it exactly behind the second image vice versa.
+        if self.floor1x + self.WIDTH < 0:
+            self.floor1x = self.floor2x + self.WIDTH
+
+        if self.floor2x + self.WIDTH < 0:
+            self.floor2x = self.floor1x + self.WIDTH
+    
 
 
 #Function to draw to window.
@@ -116,15 +184,19 @@ def draw_window(win, sprite):
 def main():
     sprite = Floppy_Bird(200,200)
     win = pygame.display.set_mode((WIN_WIDTH, WIN_HEIGHT))
+    clock_rate = pygame.time.Clock()
 
     #Begin Main game loop
     run_game = True
     while run_game:
+        clock_rate.tick(30)
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 run_game = False
 
-        draw_window(win, sprite)        
+        #sprite.move()
+        draw_window(win, sprite) 
+
     pygame.quit()
     quit()
 
