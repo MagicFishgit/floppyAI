@@ -1,0 +1,207 @@
+from turtle import width
+import pygame
+import neat
+import time
+import os
+import random
+import tkinter
+
+#Set the dimensions of the game screen
+WIN_WIDTH = 500
+WIN_HEIGHT = 800
+
+#Load in image assets to pygame.
+FLOPPY_BIRDS_IMGS = [pygame.transform.scale2x(pygame.image.load(os.path.join("imgs", "bird1.png"))), pygame.transform.scale2x(pygame.image.load(os.path.join("imgs", "bird2.png"))), pygame.transform.scale2x(pygame.image.load(os.path.join("imgs", "bird3.png")))]
+OBSTACLE_IMG = pygame.transform.scale2x(pygame.image.load(os.path.join("imgs", "pipe.png")))
+FLOOR_IMG = pygame.transform.scale2x(pygame.image.load(os.path.join("imgs", "floor.png")))
+BACKGROUND_IMG = pygame.transform.scale2x(pygame.image.load(os.path.join("imgs", "background.png")))
+
+#Sprite class - Floppy Bird
+class Floppy_Bird:
+    SPRITES = FLOPPY_BIRDS_IMGS
+    #Define sprite movement constraints
+    MAX_ROTATION = 25
+    ROTATION_VEL = 20
+    ANIMATION_TIME = 5
+
+    def __init__(self, x, y):
+        #Starting position of sprite.
+        self.x = x
+        self.y = y
+        self.tilt = 0
+        self.tick_count = 0
+        self.vel = 0
+        self.height = self.y
+        self.sprite_count = 0
+        self.sprite = self.SPRITES[0]
+        
+    #Method: Move sprite up.
+    def jump(self):
+        #Set negative velocity to move bird up on the grid.
+        self.vel = -10.5
+
+        self.tick_count = 0
+        self.height = self.y
+
+    #Method: Call every frame to move bird 'forward'.
+    def move(self):
+        #Track movement with every frame tick.
+        self.tick_count += 1
+
+        #Calculate displacement. i.e How many pixels to move up or down per frame.
+        displacement = self.vel*self.tick_count + 1.5*self.tick_count**2
+
+        #Set terminal velocity to prevent sprite from moving too far up or down.
+        if displacement >= 16:
+            displacement = 16
+
+        if displacement < 0:
+            displacement -= 2
+
+        #Change sprite position based on displacement.
+        self.y = self.y + displacement
+
+        #Determine if sprite is tilting up or down and action on it.
+        if displacement < 0 or self.y < self.height + 50:
+            if self.tilt < self.MAX_ROTATION:
+                self.tilt = self.MAX_ROTATION
+        else:
+            if self.tilt > -90:
+                self.tilt -= self.ROTATION_VEL
+
+    #Draw sprite current position to window.
+    def draw(self, win):
+        #Track times that main game loop has run.
+        self.sprite_count += 1
+
+        #Check which sprite to show based on tick count.
+        if self.sprite_count < self.ANIMATION_TIME:
+            self.sprite = self.SPRITES[0]
+        elif self.sprite_count < self.ANIMATION_TIME*2:
+            self.sprite = self.SPRITES[1]
+        elif self.sprite_count < self.ANIMATION_TIME*3:
+            self.sprite = self.SPRITES[2]
+        elif self.sprite_count < self.ANIMATION_TIME*4:
+            self.sprite = self.SPRITES[1]
+        elif self.sprite_count == self.ANIMATION_TIME*4 + 1:
+            self.sprite = self.SPRITES[0]
+            self.sprite_count = 0
+
+        #If sprite is falling straight down show neutral sprite instead of movement sprites.
+        if self.tilt <= -80:
+            self.sprite = self.SPRITES[1]
+            self.sprite_count = self.ANIMATION_TIME*2
+
+        #Rotate image around its center. Don't really know how this works. Copied.
+        rotated_sprite = pygame.transform.rotate(self.sprite, self.tilt)
+        new_rectangle = rotated_sprite.get_rect(center=self.sprite.get_rect(topleft = (self.x, self.y)).center)
+        win.blit(rotated_sprite, new_rectangle.topleft)
+    
+    #Collision detection.
+    def get_mask(self):
+        return pygame.mask.from_surface(self.sprite)
+
+class Obstacle:
+    GAP = 200
+    VEL = 5
+
+    def __init__(self, x):
+        self.x = x
+        self.height = 0
+        
+        self.top = 0
+        self.bottom = 0
+        self.OBSTACLE_TOP = pygame.transform.flip(OBSTACLE_IMG, False, True)
+        self.OBSTACLE_BOTTOM = OBSTACLE_IMG
+
+        self.passed = False
+
+    #Define obstacle height randomly for variation.
+    def set_height(self):
+        self.height = random.randrange(50, 450)
+        self.top = self.height - self.OBSTACLE_TOP.get_height()
+        self.bottom = self.height + self.GAP
+
+    #Move obstacle to the left.
+    def move(self):
+        self.x -= self.VEL
+
+    #Draw Obstacle.
+    def draw(self, win):
+        win.blit(self.OBSTACLE_TOP, (self.x, self.top))
+        win.blit(self.OBSTACLE_BOTTOM, (self.x, self.bottom))
+
+    #Collision detections using python masks for pixel perfect detection. https://www.pygame.org/docs/ref/mask.html
+    def collide (self, sprite):
+        sprite_mask = sprite.get_mask()
+        obs_top_mask = pygame.mask.from_surface(self.OBSTACLE_TOP)
+        obs_bottom_mask = pygame.mask.from_surface(self.OBSTACLE_BOTTOM)
+
+        #Calculate offset = Checking if pixels in mask arrays collide. 
+        obs_top_offset = (self.x - sprite.x, self.top - round(sprite.y))
+        obs_bottom_offset = (self.x - sprite.x, self.bottom - round(sprite.y))
+
+        obs_top_collision_check = sprite_mask.overlap(obs_bottom_mask, obs_bottom_offset)
+        obs_bottom_collision_check = sprite_mask.overlap(obs_top_mask, obs_top_offset)
+
+        if obs_top_collision_check or obs_bottom_collision_check:
+            return True
+        return False
+
+#Move floor sprite and redraw to simulate moving background.
+class Floor:
+    VEL = 5
+    WIDTH = FLOOR_IMG.get_width()
+    
+    def __init__(self, y):
+        self.y = y
+        self.floor1x = 0
+        self.floor2x = self.WIDTH
+
+    def move(self):
+        self.floor1x -= self.VEL
+        self.floor2x -= self.VEL
+
+        #If the x pos of the first floor sprite reaches the end of the left window ie. x <= 0
+        #then redraw on top of the current position of the second floor sprite plus move
+        #it's x position positively to place it exactly behind the second image vice versa.
+        if self.floor1x + self.WIDTH < 0:
+            self.floor1x = self.floor2x + self.WIDTH
+
+        if self.floor2x + self.WIDTH < 0:
+            self.floor2x = self.floor1x + self.WIDTH
+    
+
+
+#Function to draw to window.
+def draw_window(win, sprite):
+    win.blit(BACKGROUND_IMG, (0,0))
+    sprite.draw(win)
+
+    pygame.display.update()
+
+#Main game loop.
+def main():
+    sprite = Floppy_Bird(200,200)
+    win = pygame.display.set_mode((WIN_WIDTH, WIN_HEIGHT))
+    clock_rate = pygame.time.Clock()
+
+    #Begin Main game loop
+    run_game = True
+    while run_game:
+        clock_rate.tick(30)
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                run_game = False
+
+        #sprite.move()
+        draw_window(win, sprite) 
+
+    pygame.quit()
+    quit()
+
+main()
+
+
+
+
