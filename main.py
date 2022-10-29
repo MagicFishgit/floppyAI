@@ -304,7 +304,7 @@ def run(config_path):
     stats = neat.StatisticsReporter()
     population.add_reporter(stats)
 
-    winner = population.run(main,100)
+    winner = population.run(main,1000)
 
 if __name__ == "__main__":
     local_dir = os.path.dirname(__file__)
