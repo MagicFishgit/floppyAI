@@ -5,6 +5,7 @@ import time
 import os
 import random
 import tkinter
+pygame.font.init()
 
 #Set the dimensions of the game screen
 WIN_WIDTH = 500
@@ -15,6 +16,7 @@ FLOPPY_BIRDS_IMGS = [pygame.transform.scale2x(pygame.image.load(os.path.join("im
 OBSTACLE_IMG = pygame.transform.scale2x(pygame.image.load(os.path.join("imgs", "pipe.png")))
 FLOOR_IMG = pygame.transform.scale2x(pygame.image.load(os.path.join("imgs", "floor.png")))
 BACKGROUND_IMG = pygame.transform.scale2x(pygame.image.load(os.path.join("imgs", "background.png")))
+SCORE_FONT = pygame.font.SysFont("Verdana", 25)
 
 #Sprite class - Floppy Bird
 class Floppy_Bird:
@@ -181,11 +183,14 @@ class Floor:
 
 
 #Function to draw to window.
-def draw_window(win, sprite, obstacles, floor):
+def draw_window(win, sprite, obstacles, floor, score):
     win.blit(BACKGROUND_IMG, (0,0))
 
     for obstacle in obstacles:
         obstacle.draw(win)
+
+    score_text = SCORE_FONT.render("Points: " + str(score), True, (255,255,255))
+    win.blit(score_text, (WIN_WIDTH - 10 - score_text.get_width(), 10))
 
     floor.draw(win)
     sprite.draw(win)
@@ -196,9 +201,11 @@ def draw_window(win, sprite, obstacles, floor):
 def main():
     sprite = Floppy_Bird(230,350)
     floor = Floor(730)
-    obstacles = [Obstacle(700)]
+    obstacles = [Obstacle(random.randrange(500,700))]
     win = pygame.display.set_mode((WIN_WIDTH, WIN_HEIGHT))
     clock_rate = pygame.time.Clock()
+    score = 0
+    add_obstacle = False
 
     #Begin Main game loop
     run_game = True
@@ -209,11 +216,39 @@ def main():
                 run_game = False
 
         #sprite.move()
+        remove_sprites = []
+
         for obstacle in obstacles:
+            if obstacle.collide(sprite):
+                pass
+
+            #Check if obstacle is off screen.
+            if obstacle.x + obstacle.OBSTACLE_TOP.get_width() < 0:
+                remove_sprites.append(obstacle)
+
+            #Check if sprite has passed obstacle. If true generate new obstacle.
+            if not obstacle.passed and obstacle.x < sprite.x:
+                obstacle.passed = True
+                add_obstacle = True
+
             obstacle.move()
+
+        if add_obstacle:
+            score += 1
+            obstacles.append(Obstacle(random.randrange(500,700)))
+            add_obstacle = False
+
+        #Remove sprites
+        for r in remove_sprites:
+            obstacles.remove(r)
+
+        #Check if sprite hits floor.
+        if sprite.y + sprite.sprite.get_height() >= 730:
+            pass
+
             
         floor.move()
-        draw_window(win, sprite, obstacles, floor) 
+        draw_window(win, sprite, obstacles, floor, score) 
 
     pygame.quit()
     quit()
