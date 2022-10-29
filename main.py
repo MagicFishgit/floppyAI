@@ -183,7 +183,7 @@ class Floor:
 
 
 #Function to draw to window.
-def draw_window(win, sprite, obstacles, floor, score):
+def draw_window(win, sprites, obstacles, floor, score):
     win.blit(BACKGROUND_IMG, (0,0))
 
     for obstacle in obstacles:
@@ -193,7 +193,9 @@ def draw_window(win, sprite, obstacles, floor, score):
     win.blit(score_text, (WIN_WIDTH - 10 - score_text.get_width(), 10))
 
     floor.draw(win)
-    sprite.draw(win)
+
+    for sprite in sprites:
+        sprite.draw(win)
 
     pygame.display.update()
 
@@ -231,8 +233,11 @@ def main(genomes, config):
         #Check which obstacle the neural net should focus on in case of multiple obstacles on window.
         obstacle_index = 0
         if len(sprites) > 0:
-            if len(obstacles) > 1 and sprites[0].x > obstacles[0].x + obstacles[0].OBSTACLE_TOP.get_width():
-                obstacle_index = 1
+                if len(obstacles) > 1 and sprites[0].x > obstacles[0].x + obstacles[0].OBSTACLE_TOP.get_width():
+                    obstacle_index = 1
+                else:
+                    run = False
+                    break
 
         #Move the sprite forward and increase its fitness to encourage behaviour.
         for index, sprite in enumerate(sprites):
@@ -243,7 +248,7 @@ def main(genomes, config):
             output = nets[index].activate((sprite.y, abs(sprite.y - obstacles[obstacle_index].height), abs(sprite.y - obstacles[obstacle_index].bottom)))
 
             #If the output evaluates to > then 0.5 then we want the sprite to jump.
-            if output > 0.5:
+            if output[0] > 0.5:
                 sprite.jump()
 
         remove_sprites = []
@@ -297,10 +302,10 @@ def run(config_path):
     population = neat.Population(config)
 
     population.add_reporter(neat.StdOutReporter(True))
-    stats = neat.StatisticsReporter
+    stats = neat.StatisticsReporter()
     population.add_reporter(stats)
 
-    winner = population.run(main,100)
+    winner = population.run(main,50)
 
 if __name__ == "__main__":
     local_dir = os.path.dirname(__file__)
