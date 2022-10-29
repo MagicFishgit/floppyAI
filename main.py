@@ -212,13 +212,11 @@ def main(genomes, config):
         g.fitness = 0
         gen.append(g)
 
-    #sprites = []
     floor = Floor(730)
     obstacles = [Obstacle(random.randrange(500,700))]
     win = pygame.display.set_mode((WIN_WIDTH, WIN_HEIGHT))
     clock_rate = pygame.time.Clock()
     score = 0
-    add_obstacle = False
 
     #Begin Main game loop
     run_game = True
@@ -235,9 +233,9 @@ def main(genomes, config):
         if len(sprites) > 0:
             if len(obstacles) > 1 and sprites[0].x > obstacles[0].x + obstacles[0].OBSTACLE_TOP.get_width():
                 obstacle_index = 1
-            else:
-                run = False
-                break
+        else:
+            run_game = False
+            break
 
         #Move the sprite forward and increase its fitness to encourage behaviour.
         for index, sprite in enumerate(sprites):
@@ -251,6 +249,7 @@ def main(genomes, config):
             if output[0] > 0.5:
                 sprite.jump()
 
+        add_obstacle = False
         remove_sprites = []
 
         for obstacle in obstacles:
@@ -294,7 +293,7 @@ def main(genomes, config):
 
             
         floor.move()
-    draw_window(win, sprites, obstacles, floor, score) 
+        draw_window(win, sprites, obstacles, floor, score) 
 
 def run(config_path):
     config = neat.Config(neat.DefaultGenome, neat.DefaultReproduction, neat.DefaultSpeciesSet, neat.DefaultStagnation, config_path)
