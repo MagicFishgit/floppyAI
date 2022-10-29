@@ -183,7 +183,7 @@ class Floor:
 
 
 #Function to draw to window.
-def draw_window(win, sprite, obstacles, floor, score):
+def draw_window(win, sprites, obstacles, floor, score):
     win.blit(BACKGROUND_IMG, (0,0))
 
     for obstacle in obstacles:
@@ -193,19 +193,30 @@ def draw_window(win, sprite, obstacles, floor, score):
     win.blit(score_text, (WIN_WIDTH - 10 - score_text.get_width(), 10))
 
     floor.draw(win)
-    sprite.draw(win)
+
+    for sprite in sprites:
+        sprite.draw(win)
 
     pygame.display.update()
 
 #Main game loop.
-def main():
-    sprite = Floppy_Bird(230,350)
+def main(genomes, config):
+    nets = []
+    gen = []
+    sprites = []
+
+    for _, g in genomes:
+        net = neat.nn.FeedForwardNetwork.create(g, config)
+        nets.append(net)
+        sprites.append(Floppy_Bird(230, 350))
+        g.fitness = 0
+        gen.append(g)
+
     floor = Floor(730)
     obstacles = [Obstacle(random.randrange(500,700))]
     win = pygame.display.set_mode((WIN_WIDTH, WIN_HEIGHT))
     clock_rate = pygame.time.Clock()
     score = 0
-    add_obstacle = False
 
     #Begin Main game loop
     run_game = True
@@ -214,27 +225,58 @@ def main():
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 run_game = False
+                pygame.quit()
+                quit()
 
-        #sprite.move()
+        #Check which obstacle the neural net should focus on in case of multiple obstacles on window.
+        obstacle_index = 0
+        if len(sprites) > 0:
+            if len(obstacles) > 1 and sprites[0].x > obstacles[0].x + obstacles[0].OBSTACLE_TOP.get_width():
+                obstacle_index = 1
+        else:
+            run_game = False
+            break
+
+        #Move the sprite forward and increase its fitness to encourage behaviour.
+        for index, sprite in enumerate(sprites):
+            sprite.move()
+            gen[index].fitness += 0.1
+
+            #Evaluates output according to tanh function.
+            output = nets[index].activate((sprite.y, abs(sprite.y - obstacles[obstacle_index].height), abs(sprite.y - obstacles[obstacle_index].bottom)))
+
+            #If the output evaluates to > then 0.5 then we want the sprite to jump.
+            if output[0] > 0.5:
+                sprite.jump()
+
+        add_obstacle = False
         remove_sprites = []
 
         for obstacle in obstacles:
-            if obstacle.collide(sprite):
-                pass
+            for index, sprite in enumerate(sprites):
+                if obstacle.collide(sprite):
+                    #This ensures that if more than one sprite reaches the same x-position, if one sprite hits the obstacle then it will have a lower 
+                    #fitness than the other sprite which didn't hit the obstacle.
+                    gen[index].fitness -= 1
+                    sprites.pop(index)
+                    nets.pop(index)
+                    gen.pop(index)
+
+                #Check if sprite has passed obstacle. If true generate new obstacle.
+                if not obstacle.passed and obstacle.x < sprite.x:
+                    obstacle.passed = True
+                    add_obstacle = True
 
             #Check if obstacle is off screen.
             if obstacle.x + obstacle.OBSTACLE_TOP.get_width() < 0:
                 remove_sprites.append(obstacle)
 
-            #Check if sprite has passed obstacle. If true generate new obstacle.
-            if not obstacle.passed and obstacle.x < sprite.x:
-                obstacle.passed = True
-                add_obstacle = True
-
             obstacle.move()
 
         if add_obstacle:
             score += 1
+            for g in gen:
+                g.fitness += 5
             obstacles.append(Obstacle(random.randrange(500,700)))
             add_obstacle = False
 
@@ -242,19 +284,31 @@ def main():
         for r in remove_sprites:
             obstacles.remove(r)
 
-        #Check if sprite hits floor.
-        if sprite.y + sprite.sprite.get_height() >= 730:
-            pass
+        #Check if sprite hits floor or ceiling and terminate them.
+        for index, sprite in enumerate(sprites):
+            if sprite.y + sprite.sprite.get_height() >= 730 or sprite.y < 0:
+                sprites.pop(index)
+                nets.pop(index)
+                gen.pop(index)
 
             
         floor.move()
-        draw_window(win, sprite, obstacles, floor, score) 
+        draw_window(win, sprites, obstacles, floor, score) 
 
-    pygame.quit()
-    quit()
+def run(config_path):
+    config = neat.Config(neat.DefaultGenome, neat.DefaultReproduction, neat.DefaultSpeciesSet, neat.DefaultStagnation, config_path)
 
-main()
+    population = neat.Population(config)
 
+    population.add_reporter(neat.StdOutReporter(True))
+    stats = neat.StatisticsReporter()
+    population.add_reporter(stats)
 
+    winner = population.run(main,100)
+
+if __name__ == "__main__":
+    local_dir = os.path.dirname(__file__)
+    config_path = os.path.join(local_dir,"config-feedforward.txt")
+    run(config_path)
 
 

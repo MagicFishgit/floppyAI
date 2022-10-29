@@ -1,8 +1,12 @@
 {
     "python.analysis.typeCheckingMode": "basic",
     "cSpell.words": [
+        "behaviour",
         "blit",
+        "feedforward",
         "pygame",
-        "topleft"
+        "stdev",
+        "topleft",
+        "Verdana"
     ]
 }
