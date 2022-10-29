@@ -233,11 +233,11 @@ def main(genomes, config):
         #Check which obstacle the neural net should focus on in case of multiple obstacles on window.
         obstacle_index = 0
         if len(sprites) > 0:
-                if len(obstacles) > 1 and sprites[0].x > obstacles[0].x + obstacles[0].OBSTACLE_TOP.get_width():
-                    obstacle_index = 1
-                else:
-                    run = False
-                    break
+            if len(obstacles) > 1 and sprites[0].x > obstacles[0].x + obstacles[0].OBSTACLE_TOP.get_width():
+                obstacle_index = 1
+            else:
+                run = False
+                break
 
         #Move the sprite forward and increase its fitness to encourage behaviour.
         for index, sprite in enumerate(sprites):
@@ -294,7 +294,7 @@ def main(genomes, config):
 
             
         floor.move()
-        draw_window(win, sprites, obstacles, floor, score) 
+    draw_window(win, sprites, obstacles, floor, score) 
 
 def run(config_path):
     config = neat.Config(neat.DefaultGenome, neat.DefaultReproduction, neat.DefaultSpeciesSet, neat.DefaultStagnation, config_path)
@@ -305,7 +305,7 @@ def run(config_path):
     stats = neat.StatisticsReporter()
     population.add_reporter(stats)
 
-    winner = population.run(main,50)
+    winner = population.run(main,100)
 
 if __name__ == "__main__":
     local_dir = os.path.dirname(__file__)
