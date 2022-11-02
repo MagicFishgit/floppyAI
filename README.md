@@ -23,7 +23,7 @@ Installation & Usage:
 Requirements: Python3.8 at a minimum, pip3
 
 1. Clone the repo.
-2. Install libraries using pip listed in requirements.txt
+2. Install libraries using pip listed in requirements.txt by running `pip3 install -r requirements.txt`
 3. Run the program.
 
 Yep, thats it.
