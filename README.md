@@ -28,4 +28,6 @@ Requirements: Python3.8 at a minimum, pip3
 
 Yep, thats it.
 
+Demo: https://loom.com/share/8a02504a49a34eb7aa2beddfb838ceb4
+
 
